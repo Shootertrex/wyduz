@@ -1,105 +1,28 @@
 name: Release
 on:
-  push:
-    tags:
-      - v[0-9]+.*:
-jobs:
-  build:
-    name: Build
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        build: [linux, macos, win-msvc]
-        include:
-          - build: linux
-            os: ubuntu-latest
-            rust: stable
-          - build: macos
-            os: macOS-latest
-            rust: stable
-          - build: win-msvc
-            os: windows-latest
-            rust: stable
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 1
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ matrix.rust }}
-          override: true
-          profile: minimal
-      - name: Build release
-        run: cargo build --release --verbose
-      - name: Install FLTK deps for Linux
-        if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: sudo apt-get install libx11-dev libxext-dev libxft-dev libxinerama-dev libxcursor-dev libxrender-dev libxfixes-dev libpango1.0-dev libgl1-mesa-dev libglu1-mesa-dev
-      
-      - name: Upload windows artifact
-        if: ${{ matrix.os == 'windows-latest' }}
-        uses: actions/upload-artifact@v1
-        with:
-          name: wyduz-windows
-          path: target/release/wyduz.exe
-      
-      - name: Upload macos artifact
-        if: ${{ matrix.os == 'macOS-latest' }}
-        uses: actions/upload-artifact@v1
-        with:
-          name: wyduz-macos
-          path: target/release/wyduz
-      
-      - name: Upload linux artifact
-        if: ${{ matrix.os == 'ubuntu-latest' }}
-        uses: actions/upload-artifact@v1
-        with:
-          name: wyduz-linux
-          path: target/release/wyduz
-
   release:
-    name: Release
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Create release directory
-        run: mkdir release/
+    types: [created]
 
-      - name: Download linux artifact
-        uses: actions/download-artifact@v2
+jobs:
+  release:
+    name: release ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-pc-windows-gnu
+            archive: zip
+          - target: x86_64-unknown-linux-musl
+            archive: tar.gz tar.xz tar.zst
+          - target: x86_64-apple-darwin
+            archive: zip
+    steps:
+      - uses: actions/checkout@master
+      - name: Compile and release
+        uses: rust-build/rust-build.action@v1.4.4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: wyduz-linux
-          path: .
-      - name: Zip linux artifact
-        uses: montudor/action-zip@v0.1.0
-        with:
-          args: zip release/wyduz-linux.zip wyduz
-      
-      - name: Download macos artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: wyduz-macos
-          path: .
-      - name: Zip macos artifact
-        uses: montudor/action-zip@v0.1.0
-        with:
-          args: zip release/wyduz-macos.zip wyduz
-      
-      - name: Download windows artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: wyduz-windows
-          path: .
-      - name: Zip windows artifact
-        uses: montudor/action-zip@v0.1.0
-        with:
-          args: zip release/wyduz-windows.zip wyduz.exe
-      
-      - name: Release artifact
-        uses: ncipollo/release-action@v1
-        with:
-          allowUpdates: true
-          tag: v0.1
-          artifacts: release/*
-          token: ${{ secrets.ACCESS_TOKEN }}
+          RUSTTARGET: ${{ matrix.target }}
+          ARCHIVE_TYPES: ${{ matrix.archive }}
