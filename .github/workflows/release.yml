@@ -1,48 +1,104 @@
 name: Release
-
-permissions:
-  contents: write
-
-on:
+jobson:
   push:
     tags:
-      - v[0-9]+.*
-
-jobs:
-  create-release:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: taiki-e/create-gh-release-action@v1
-        with:
-          # (optional) Path to changelog.
-          changelog: CHANGELOG.md
-          # (required) GitHub token for creating GitHub Releases.
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-  upload-assets:
-    needs: create-release
+      - v[0-9]+.*:
+  build:
+    name: Build
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
-          - windows-latest
-    runs-on: ${{ matrix.os }}
+        build: [linux, macos, win-msvc]
+        include:
+          - build: linux
+            os: ubuntu-latest
+            rust: stable
+          - build: macos
+            os: macOS-latest
+            rust: stable
+          - build: win-msvc
+            os: windows-latest
+            rust: stable
     steps:
-      - uses: actions/checkout@v4
-      - uses: taiki-e/upload-rust-binary-action@v1
+      - name: Checkout repository
+        uses: actions/checkout@v3
         with:
-          # (required) Comma-separated list of binary names (non-extension portion of filename) to build and upload.
-          # Note that glob pattern is not supported yet.
-          bin: ...
-          # (optional) On which platform to distribute the `.tar.gz` file.
-          # [default value: unix]
-          # [possible values: all, unix, windows, none]
-          tar: unix
-          # (optional) On which platform to distribute the `.zip` file.
-          # [default value: windows]
-          # [possible values: all, unix, windows, none]
-          zip: windows
-          # (required) GitHub token for uploading assets to GitHub Releases.
-          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          override: true
+          profile: minimal
+      - name: Build release
+        run: cargo build --release --verbose
+      - name: Install FLTK deps for Linux
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: sudo apt-get install libx11-dev libxext-dev libxft-dev libxinerama-dev libxcursor-dev libxrender-dev libxfixes-dev libpango1.0-dev libgl1-mesa-dev libglu1-mesa-dev
+      
+      - name: Upload windows artifact
+        if: ${{ matrix.os == 'windows-latest' }}
+        uses: actions/upload-artifact@v1
+        with:
+          name: wyduz-windows
+          path: target/release/wyduz.exe
+      
+      - name: Upload macos artifact
+        if: ${{ matrix.os == 'macOS-latest' }}
+        uses: actions/upload-artifact@v1
+        with:
+          name: wyduz-macos
+          path: target/release/wyduz
+      
+      - name: Upload linux artifact
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        uses: actions/upload-artifact@v1
+        with:
+          name: wyduz-linux
+          path: target/release/wyduz
+
+  release:
+    name: Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create release directory
+        run: mkdir release/
+
+      - name: Download linux artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: wyduz-linux
+          path: .
+      - name: Zip linux artifact
+        uses: montudor/action-zip@v0.1.0
+        with:
+          args: zip release/wyduz-linux.zip wyduz
+      
+      - name: Download macos artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: wyduz-macos
+          path: .
+      - name: Zip macos artifact
+        uses: montudor/action-zip@v0.1.0
+        with:
+          args: zip release/wyduz-macos.zip wyduz
+      
+      - name: Download windows artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: wyduz-windows
+          path: .
+      - name: Zip windows artifact
+        uses: montudor/action-zip@v0.1.0
+        with:
+          args: zip release/wyduz-windows.zip wyduz.exe
+      
+      - name: Release artifact
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          tag: v0.1
+          artifacts: release/*
+          token: ${{ secrets.ACCESS_TOKEN }}
