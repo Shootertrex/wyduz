@@ -1,5 +1,7 @@
 use std::str::FromStr;
 
+use ureq::{Agent, AgentBuilder};
+
 #[derive(Debug)]
 pub enum HttpMethod {
     Delete,
@@ -37,10 +39,16 @@ pub struct Response {
     pub headers: Vec<(String, String)>,
 }
 
-pub fn make_request(request: &Request) -> Result<Response, Box<ureq::Error>> {
+pub fn build_agent() -> Agent {
+    AgentBuilder::new()
+        .try_proxy_from_env(true)
+        .build()
+}
+
+pub fn make_request(agent: &Agent, request: &Request) -> Result<Response, Box<ureq::Error>> {
     match request.method {
-        HttpMethod::Get => Ok(make_get_request(request)?),
-        HttpMethod::Post => Ok(make_post_request(request)?),
+        HttpMethod::Get => Ok(make_get_request(agent, request)?),
+        HttpMethod::Post => Ok(make_post_request(agent, request)?),
         _ => {
             todo!()
         }
@@ -66,8 +74,8 @@ fn build_response_headers(response: &ureq::Response) -> Vec<(String, String)> {
         .collect()
 }
 
-fn make_get_request(request: &Request) -> Result<Response, Box<ureq::Error>> {
-    let mut u_request: ureq::Request = ureq::get(&request.url);
+fn make_get_request(agent: &Agent, request: &Request) -> Result<Response, Box<ureq::Error>> {
+    let mut u_request: ureq::Request = agent.get(&request.url);
     u_request = add_headers(request, u_request);
 
     let response = u_request.call()?;
@@ -80,9 +88,9 @@ fn make_get_request(request: &Request) -> Result<Response, Box<ureq::Error>> {
     })
 }
 
-fn make_post_request(request: &Request) -> Result<Response, Box<ureq::Error>> {
+fn make_post_request(agent: &Agent, request: &Request) -> Result<Response, Box<ureq::Error>> {
     let body = &request.body;
-    let mut u_request: ureq::Request = ureq::post(&request.url);
+    let mut u_request: ureq::Request = agent.post(&request.url);
     u_request = add_headers(request, u_request);
 
     let response = u_request.send_string(&body.clone().unwrap())?;
@@ -97,7 +105,7 @@ fn make_post_request(request: &Request) -> Result<Response, Box<ureq::Error>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::controller::{make_request, HttpMethod, Request, Response};
+    use crate::controller::{make_request, HttpMethod, Request, Response, build_agent};
 
     fn assert_headers(expected_response: &Response, actual_response: &Response) {
         for header in expected_response.headers.iter() {
@@ -128,7 +136,7 @@ mod tests {
             headers: vec![("content-type".into(), "application/json".into())],
         };
 
-        let actual_response: Response = make_request(&request).unwrap();
+        let actual_response: Response = make_request(&build_agent(), &request).unwrap();
 
         assert_eq!(expected_response.body, actual_response.body);
         assert_headers(&expected_response, &actual_response);
@@ -156,7 +164,7 @@ mod tests {
             headers: vec![("content-type".into(), "application/json".into())],
         };
 
-        let actual_response: Response = make_request(&request).unwrap();
+        let actual_response: Response = make_request(&build_agent(), &request).unwrap();
 
         assert_eq!(expected_response.body, actual_response.body);
         assert_headers(&expected_response, &actual_response);
@@ -185,7 +193,7 @@ mod tests {
             headers: vec![("content-type".into(), "text/html".into())],
         };
 
-        let actual_response: Response = make_request(&request).unwrap();
+        let actual_response: Response = make_request(&build_agent(), &request).unwrap();
 
         assert_eq!(expected_response.body, actual_response.body);
         assert_headers(&expected_response, &actual_response);
@@ -207,7 +215,7 @@ mod tests {
             body: None,
         };
 
-        let actual_response = make_request(&request).unwrap_err();
+        let actual_response = make_request(&build_agent(), &request).unwrap_err();
 
         let response = actual_response.into_response().unwrap();
         assert_eq!(404, response.status());
@@ -237,7 +245,7 @@ mod tests {
             headers: vec![("content-type".into(), "application/json".into())],
         };
 
-        let actual_response: Response = make_request(&request).unwrap();
+        let actual_response: Response = make_request(&build_agent(), &request).unwrap();
 
         assert_eq!(expected_response.body, actual_response.body);
         assert_headers(&expected_response, &actual_response);

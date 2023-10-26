@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+### Changed
+- Changed requests to try to use proxy configs 
+
 ### Fixed
 - Fixed the terminal window being opened on Windows
 

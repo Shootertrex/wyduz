@@ -1,7 +1,7 @@
 #![windows_subsystem = "windows"]
 mod controller;
 
-use controller::{make_request, HttpMethod, Request};
+use controller::{make_request, HttpMethod, Request, build_agent};
 use fltk::{
     button::Button,
     enums::*,
@@ -13,6 +13,7 @@ use fltk::{
     *,
 };
 use fltk_theme::{ThemeType, WidgetTheme};
+use ureq::Agent;
 use std::str::FromStr;
 use std::time::Instant;
 
@@ -27,6 +28,7 @@ pub struct State {
     pub request_headers: Vec<(input::Input, input::Input)>,
     pub response_headers: Flex,
     pub status_code: frame::Frame,
+    pub agent: Agent,
     // pub saved: bool,
     // pub current_file: PathBuf,
 }
@@ -48,6 +50,7 @@ impl State {
             request_headers: Vec::new(),
             response_headers,
             status_code,
+            agent: build_agent(),
             // saved: true,
             // current_file: PathBuf::new(),
         }
@@ -68,7 +71,7 @@ fn send_cb(_e: &mut Button) {
         };
 
         let start = Instant::now();
-        match make_request(&request) {
+        match make_request(&s.agent, &request) {
             Ok(response) => {
                 let duration = start.elapsed();
                 println!("response: {:?}\n{:?}", response, duration);
