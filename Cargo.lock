@@ -161,25 +161,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fl2rust"
-version = "0.5.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7f4d54e15fc1a34db786b77a8942d4f151a66def815ffcf879c031416041d0f"
-dependencies = [
- "fluid-parser",
-]
-
-[[package]]
-name = "fl2rust-macro"
-version = "0.5.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da0d8c7a6319cf3df65b079e0924ff43d0194c5df449aee256aedf58ce95348a"
-dependencies = [
- "fl2rust",
- "fluid-parser",
-]
-
-[[package]]
 name = "flate2"
 version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -219,12 +200,6 @@ checksum = "e368f9b1216b5bdd37f4a4dacaba61b566b04f823e1105d286cf7a89b0136d54"
 dependencies = [
  "fltk",
 ]
-
-[[package]]
-name = "fluid-parser"
-version = "0.1.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33e70a1798b10fa71da74a93a0c2123222df44d32aab6981b3a1e5d31db5b13d"
 
 [[package]]
 name = "fnv"
@@ -1242,7 +1217,6 @@ checksum = "ed94fce61571a4006852b7389a063ab983c02eb1bb37b47f8272ce92d06d9538"
 name = "wyduz"
 version = "0.1.0"
 dependencies = [
- "fl2rust-macro",
  "fltk",
  "fltk-theme",
  "mockito",
