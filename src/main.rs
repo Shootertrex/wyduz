@@ -14,7 +14,7 @@ use fltk::{
 };
 use fltk_theme::{ThemeType, WidgetTheme};
 use std::str::FromStr;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 static STATE: Lazy<app::GlobalState<State>> = Lazy::new(app::GlobalState::<State>::get);
 
