@@ -1,3 +1,4 @@
+#![windows_subsystem = "windows"]
 mod controller;
 
 use controller::{make_request, HttpMethod, Request};
